@@ -18,8 +18,9 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 COPY --chown=appuser:appuser . .
 
-# Download model files at build time — baked into image permanently
-RUN python main.py download-files
+# Download models to a shared location accessible by appuser
+ENV HF_HUB_CACHE=/app/.hf_cache
+RUN mkdir -p /app/.hf_cache && python main.py download-files && chown -R appuser:appuser /app/.hf_cache
 
 USER appuser
 
