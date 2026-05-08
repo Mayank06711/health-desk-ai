@@ -2,20 +2,40 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: health-desk-postgres
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: voice_agent
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-voice_agent}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  backend:
+    build: ./backend
+    container_name: health-desk-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: health-desk-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:
