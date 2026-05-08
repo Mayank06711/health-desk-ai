@@ -8,15 +8,22 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 FROM python:3.12-slim
 
-WORKDIR /app
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r appuser && useradd -r -g appuser -d /app -m appuser
+
+WORKDIR /app
 
 COPY --from=builder /install /usr/local
 
-COPY . .
+# Pre-downloaded model files — no runtime downloads needed
+COPY --chown=appuser:appuser models/huggingface /app/models/huggingface
+ENV HF_HUB_CACHE=/app/models/huggingface
+
+COPY --chown=appuser:appuser . .
+
+USER appuser
 
 EXPOSE 8000
 
