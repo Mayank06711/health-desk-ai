@@ -11,12 +11,17 @@ import { ToolStatusPanel } from "./ToolStatusPanel";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { CallSummary } from "./CallSummary";
 import { Controls } from "./Controls";
+import { Notification } from "./Notification";
 
 function RoomContent({ onDisconnect }: { onDisconnect: () => void }) {
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
 
   const toggleMic = useCallback(async () => {
-    await localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
+    try {
+      await localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
+    } catch (err) {
+      console.error("Mic toggle failed:", err);
+    }
   }, [localParticipant, isMicrophoneEnabled]);
 
   return (
@@ -49,22 +54,57 @@ export function VoiceAgent() {
     url: string;
   } | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const startCall = useCallback(async () => {
+    setError(null);
     setIsConnecting(true);
+
+    // Check mic permission first
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setError(
+        "Microphone access is required for voice calls. Please allow microphone permission."
+      );
+      setIsConnecting(false);
+      return;
+    }
+
     try {
       const identity = `patient-${Date.now()}`;
       const { token, url } = await fetchToken(identity);
+
+      if (!token || !url) {
+        setError("Received invalid connection details. Please try again.");
+        setIsConnecting(false);
+        return;
+      }
+
       setConnectionState({ token, url });
     } catch (err) {
-      console.error("Failed to connect:", err);
-      alert("Failed to start call. Is the backend running?");
+      const message =
+        err instanceof Error ? err.message : "Unknown error occurred";
+      if (message.includes("Failed to fetch") || message.includes("NetworkError")) {
+        setError(
+          "Cannot reach the server. Make sure the backend is running on port 8000."
+        );
+      } else {
+        setError(`Connection failed: ${message}`);
+      }
     } finally {
       setIsConnecting(false);
     }
   }, []);
 
   const disconnect = useCallback(() => {
+    setConnectionState(null);
+    setError(null);
+  }, []);
+
+  const handleRoomError = useCallback((err: Error) => {
+    console.error("Room error:", err);
+    setError(`Connection lost: ${err.message}`);
     setConnectionState(null);
   }, []);
 
@@ -82,6 +122,17 @@ export function VoiceAgent() {
             Book, view, or manage your appointments by voice
           </p>
         </div>
+
+        {error && (
+          <div className="w-full max-w-md">
+            <Notification
+              type="error"
+              message={error}
+              onDismiss={() => setError(null)}
+            />
+          </div>
+        )}
+
         <Controls
           isConnected={false}
           isMuted={false}
@@ -104,6 +155,7 @@ export function VoiceAgent() {
       audio={true}
       video={false}
       onDisconnected={disconnect}
+      onError={handleRoomError}
     >
       <RoomContent onDisconnect={disconnect} />
     </LiveKitRoom>
