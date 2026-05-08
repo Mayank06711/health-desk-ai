@@ -45,6 +45,8 @@ services:
     environment:
       RUNNING_IN_DOCKER: "true"
     command: ["python", "main.py", "start"]
+    volumes:
+      - hf_cache:/root/.cache/huggingface
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,3 +64,4 @@ services:
 
 volumes:
   pgdata:
+  hf_cache:
