@@ -8,7 +8,7 @@ from app.agent.prompts import get_system_prompt
 from app.services.appointment_service import AppointmentService
 from app.services.summary_service import SummaryService
 from app.database.base import DatabaseBase
-from app.config import settings
+from app.config import settings, get_async_llm_client
 from app.logger import logger
 
 
@@ -17,9 +17,11 @@ class HealthcareAgent(Agent):
     def __init__(self, db: DatabaseBase):
         self._db = db
         self._appointment_service = AppointmentService(db)
-        self._summary_service = SummaryService(api_key=settings.OPENAI_API_KEY)
+
+        llm_client = get_async_llm_client()
+        self._summary_service = SummaryService(client=llm_client)
         self._state = ConversationStateManager()
-        self._context = ContextManager(openai_api_key=settings.OPENAI_API_KEY)
+        self._context = ContextManager(llm_client=llm_client)
 
         super().__init__(instructions=get_system_prompt())
 

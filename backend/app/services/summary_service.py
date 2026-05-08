@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 from openai import AsyncOpenAI
+from app.config import settings
 from app.logger import logger
 
 SUMMARY_PROMPT = """Analyze this voice conversation between a healthcare AI assistant and a patient.
@@ -23,8 +24,8 @@ Return a JSON object with these exact fields:
 
 class SummaryService:
 
-    def __init__(self, api_key: str):
-        self._client = AsyncOpenAI(api_key=api_key)
+    def __init__(self, client: AsyncOpenAI):
+        self._client = client
 
     async def generate_summary(
         self,
@@ -56,7 +57,7 @@ class SummaryService:
 
         try:
             response = await self._client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=settings.LLM_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 response_format={"type": "json_object"},
                 timeout=10.0,

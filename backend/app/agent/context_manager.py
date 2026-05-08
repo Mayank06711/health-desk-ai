@@ -1,5 +1,6 @@
 import tiktoken
 from openai import AsyncOpenAI
+from app.config import settings
 from app.logger import logger
 
 
@@ -9,7 +10,7 @@ class ContextManager:
         self,
         max_total_tokens: int = 8000,
         recent_turns_to_keep: int = 10,
-        openai_api_key: str = "",
+        llm_client: AsyncOpenAI | None = None,
     ):
         self._max_total_tokens = max_total_tokens
         self._recent_turns = recent_turns_to_keep
@@ -17,7 +18,7 @@ class ContextManager:
         self._context_summary: str | None = None
         self._critical_facts: dict[str, str] = {}
         self._all_messages: list[dict] = []
-        self._client = AsyncOpenAI(api_key=openai_api_key) if openai_api_key else None
+        self._client = llm_client
 
     def count_tokens(self, text: str) -> int:
         return len(self._encoder.encode(text))
@@ -52,7 +53,7 @@ class ContextManager:
 
         try:
             response = await self._client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=settings.LLM_MODEL,
                 messages=[{
                     "role": "user",
                     "content": f"Summarize this conversation excerpt in 2-3 sentences. "

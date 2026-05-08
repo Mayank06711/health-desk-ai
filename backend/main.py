@@ -74,7 +74,11 @@ async def entrypoint(ctx: JobContext):
             smart_format=True,
             punctuate=True,
         ),
-        llm=openai.LLM(model="gpt-4o"),
+        llm=openai.LLM(
+            model=settings.LLM_MODEL,
+            base_url=settings.LLM_BASE_URL,
+            api_key=settings.LLM_API_KEY,
+        ),
         tts=cartesia.TTS(
             model="sonic-2",
             voice=settings.CARTESIA_VOICE_ID or "79a125e8-cd45-4c13-8a67-188112f4dd22",
