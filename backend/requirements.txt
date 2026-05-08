@@ -1,0 +1,25 @@
+# LiveKit
+livekit-agents>=1.0
+livekit-plugins-openai
+livekit-plugins-deepgram
+livekit-plugins-cartesia
+livekit-plugins-silero
+livekit-plugins-turn-detector
+livekit[api]
+
+# API Server
+fastapi
+uvicorn[standard]
+
+# Database
+sqlalchemy[asyncio]
+asyncpg
+greenlet
+
+# Config
+pydantic-settings
+python-dotenv
+
+# Utilities
+httpx
+tiktoken

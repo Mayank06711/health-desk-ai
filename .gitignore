@@ -29,8 +29,5 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Project docs (not for GitHub)
-PLAN.md
-livekitagent.md
-task.md
+# Agent work log (not for GitHub)
 log.md
