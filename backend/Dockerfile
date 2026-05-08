@@ -16,11 +16,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY --from=builder /install /usr/local
-
-# Pre-downloaded model files — avoids runtime download
-COPY --chown=appuser:appuser models/huggingface /app/models/huggingface
-ENV HF_HUB_CACHE=/app/models/huggingface
-
 COPY --chown=appuser:appuser . .
 
 USER appuser

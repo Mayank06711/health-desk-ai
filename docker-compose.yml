@@ -44,7 +44,6 @@ services:
       - ./backend/.env
     environment:
       RUNNING_IN_DOCKER: "true"
-      LOCAL_MODELS_ONLY: "true"
     command: ["python", "main.py", "start"]
     depends_on:
       postgres:
