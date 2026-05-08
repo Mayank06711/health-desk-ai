@@ -13,6 +13,7 @@ from livekit.agents import (
 )
 from livekit.plugins import openai, deepgram, cartesia, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.plugins.simli import AvatarSession, SimliConfig
 
 
 db: PostgresDatabase | None = None
@@ -52,12 +53,25 @@ async def entrypoint(ctx: JobContext):
 
     logger.info(f"New session: room={ctx.room.name}")
 
+    # Avatar — only if Simli keys are configured
+    avatar = None
+    if settings.SIMLI_API_KEY and settings.SIMLI_FACE_ID:
+        avatar = AvatarSession(
+            simli_config=SimliConfig(
+                api_key=settings.SIMLI_API_KEY,
+                face_id=settings.SIMLI_FACE_ID,
+            ),
+        )
+        logger.info("Simli avatar enabled")
+    else:
+        logger.info("Simli not configured, running without avatar")
+
     session = AgentSession(
         stt=deepgram.STT(
             model="nova-2",
             language="en-US",
-            interim_results=True,   # faster partial transcripts
-            smart_format=True,      # auto-format numbers, dates
+            interim_results=True,
+            smart_format=True,
             punctuate=True,
         ),
         llm=openai.LLM(model="gpt-4o"),
@@ -66,6 +80,7 @@ async def entrypoint(ctx: JobContext):
             voice=settings.CARTESIA_VOICE_ID or "79a125e8-cd45-4c13-8a67-188112f4dd22",
         ),
         vad=ctx.proc.userdata["vad"],
+        avatar=avatar,
         turn_handling={
             # Semantic turn detection — uses the pre-loaded transformer model
             # to predict if user is done speaking based on what they said,

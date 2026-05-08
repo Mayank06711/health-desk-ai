@@ -5,6 +5,7 @@ livekit-plugins-deepgram
 livekit-plugins-cartesia
 livekit-plugins-silero
 livekit-plugins-turn-detector
+livekit-plugins-simli
 livekit[api]
 
 # API Server
