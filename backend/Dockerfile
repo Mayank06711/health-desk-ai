@@ -18,6 +18,9 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 COPY --chown=appuser:appuser . .
 
+# Download model files at build time — baked into image permanently
+RUN python main.py download-files
+
 USER appuser
 
 EXPOSE 8000
