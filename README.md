@@ -133,6 +133,7 @@ docker compose up -d postgres
 cd backend
 python -m venv .venv && source .venv/bin/activate  # or .venv\Scripts\activate on Windows
 pip install -r requirements.txt
+python main.py download-files   # downloads turn detector model (~15MB, one time only)
 python run_api.py
 
 # Terminal 3: Agent Worker
@@ -145,6 +146,8 @@ cd frontend
 npm install
 npm run dev
 ```
+
+> **Note:** `python main.py download-files` downloads the turn detector model to HuggingFace cache on first run. After that, set `LOCAL_MODELS_ONLY=true` to skip network checks: `LOCAL_MODELS_ONLY=true python main.py dev`
 
 ## Project Structure
 

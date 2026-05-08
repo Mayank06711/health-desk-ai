@@ -29,5 +29,8 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Models (downloaded via: python main.py download-files)
+backend/models/
+
 # Agent work log (not for GitHub)
 log.md

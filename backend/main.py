@@ -4,6 +4,14 @@ import json
 
 sys.path.insert(0, os.path.dirname(__file__))
 
+# LOCAL_MODELS_ONLY controls whether HuggingFace downloads models or uses cached ones
+# - true: uses pre-downloaded models only (for us, we already have them)
+# - false (default): downloads models on first run (for new users cloning the repo)
+# Pass via CLI: LOCAL_MODELS_ONLY=true python main.py start
+# Pass via docker-compose: environment: LOCAL_MODELS_ONLY=true
+if os.environ.get("LOCAL_MODELS_ONLY", "false").lower() == "true":
+    os.environ["HF_HUB_OFFLINE"] = "1"
+
 from app.config import settings
 from app.logger import logger
 from app.database.postgres import PostgresDatabase
