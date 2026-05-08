@@ -1,6 +1,7 @@
 import type { TokenResponse } from "../types";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// In local dev: VITE_API_URL can point to http://localhost:8000 if running separately
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 export async function fetchToken(
   identity: string,
@@ -11,7 +12,7 @@ export async function fetchToken(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       identity,
-      room: room || "health-desk",
+      room: room || `health-desk-${Date.now()}`,
       name: "Patient",
     }),
   });

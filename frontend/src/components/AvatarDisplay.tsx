@@ -24,18 +24,21 @@ export function AvatarDisplay() {
           <VideoTrack
             trackRef={avatarTrack}
             className="w-full h-full object-cover"
+            style={{ transform: "scaleX(1)" }}
           />
         ) : (
           <div className="flex flex-col items-center gap-4">
             <div className="w-20 h-20 rounded-full bg-[#034C81] flex items-center justify-center shadow-lg">
               <span className="text-3xl text-white font-bold">HD</span>
             </div>
-            <BarVisualizer
-              state={state}
-              barCount={5}
-              track={audioTrack}
-              className="h-12"
-            />
+            {state === "speaking" || state === "listening" ? (
+              <BarVisualizer
+                state={state}
+                barCount={5}
+                track={audioTrack}
+                className="h-12"
+              />
+            ) : null}
           </div>
         )}
       </div>
@@ -51,7 +54,9 @@ export function AvatarDisplay() {
               : "bg-[#B0BEC5]"
           }`}
         />
-        <span className="text-sm text-[#455A64] capitalize">{state}</span>
+        <span className="text-sm text-[#455A64] capitalize">
+          {state || "Connecting"}
+        </span>
       </div>
     </div>
   );

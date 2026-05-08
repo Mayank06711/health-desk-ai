@@ -2,7 +2,6 @@ import { useState, useCallback } from "react";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
-  useLocalParticipant,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
 import { fetchToken } from "../services/api";
@@ -14,19 +13,9 @@ import { Controls } from "./Controls";
 import { Notification } from "./Notification";
 
 function RoomContent({ onDisconnect }: { onDisconnect: () => void }) {
-  const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
-
-  const toggleMic = useCallback(async () => {
-    try {
-      await localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
-    } catch (err) {
-      console.error("Mic toggle failed:", err);
-    }
-  }, [localParticipant, isMicrophoneEnabled]);
-
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="flex flex-col items-center gap-4">
           <AvatarDisplay />
         </div>
@@ -35,13 +24,13 @@ function RoomContent({ onDisconnect }: { onDisconnect: () => void }) {
           <ToolStatusPanel />
         </div>
       </div>
-      <Controls
-        isConnected={true}
-        isMuted={!isMicrophoneEnabled}
-        onStartCall={() => {}}
-        onEndCall={onDisconnect}
-        onToggleMic={toggleMic}
-      />
+      <div className="sticky bottom-0 bg-[#F5F7FA] py-3">
+        <Controls
+          isConnected={true}
+          onStartCall={() => {}}
+          onEndCall={onDisconnect}
+        />
+      </div>
       <CallSummary />
       <RoomAudioRenderer />
     </div>
@@ -60,7 +49,6 @@ export function VoiceAgent() {
     setError(null);
     setIsConnecting(true);
 
-    // Check mic permission first
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
@@ -85,7 +73,10 @@ export function VoiceAgent() {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Unknown error occurred";
-      if (message.includes("Failed to fetch") || message.includes("NetworkError")) {
+      if (
+        message.includes("Failed to fetch") ||
+        message.includes("NetworkError")
+      ) {
         setError(
           "Cannot reach the server. Make sure the backend is running on port 8000."
         );
@@ -135,10 +126,8 @@ export function VoiceAgent() {
 
         <Controls
           isConnected={false}
-          isMuted={false}
           onStartCall={startCall}
           onEndCall={() => {}}
-          onToggleMic={() => {}}
         />
         {isConnecting && (
           <p className="text-sm text-[#B0BEC5]">Connecting...</p>

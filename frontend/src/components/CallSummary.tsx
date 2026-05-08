@@ -1,16 +1,82 @@
+import { FileText, Calendar, Clock, Download, ChevronUp, ChevronDown } from "lucide-react";
 import { useState } from "react";
-import { FileText, Calendar, Clock, X } from "lucide-react";
 import { useCallSummary } from "../hooks/useCallSummary";
+
+function downloadSummary(
+  summary: NonNullable<ReturnType<typeof useCallSummary>>
+) {
+  const lines = [
+    "HEALTH DESK AI — APPOINTMENT SUMMARY",
+    "=".repeat(40),
+    "",
+    `Date: ${new Date(summary.timestamp).toLocaleString()}`,
+    "",
+    "SUMMARY",
+    summary.summary,
+    "",
+  ];
+
+  if (summary.appointments.length > 0) {
+    lines.push("APPOINTMENTS");
+    summary.appointments.forEach((a, i) => {
+      lines.push(`  ${i + 1}. ${a.date} at ${a.time} — ${a.status}`);
+    });
+    lines.push("");
+  }
+
+  if (summary.preferences.length > 0) {
+    lines.push("PREFERENCES");
+    summary.preferences.forEach((p) => lines.push(`  - ${p}`));
+    lines.push("");
+  }
+
+  const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `appointment-summary-${new Date().toISOString().slice(0, 10)}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function CallSummary() {
   const summary = useCallSummary();
-  const [dismissed, setDismissed] = useState(false);
+  const [minimized, setMinimized] = useState(false);
 
-  if (!summary || dismissed) return null;
+  if (!summary) return null;
 
+  // Minimized widget — small bar on bottom-right
+  if (minimized) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50">
+        <div className="bg-white rounded-xl shadow-lg border border-[#EEF2F7] p-3 flex items-center gap-3">
+          <FileText size={16} className="text-[#034C81]" />
+          <span className="text-sm font-medium text-[#263238]">
+            Call Summary
+          </span>
+          <button
+            onClick={() => downloadSummary(summary)}
+            className="text-[#034C81] hover:text-[#023a63]"
+            aria-label="Download summary"
+          >
+            <Download size={16} />
+          </button>
+          <button
+            onClick={() => setMinimized(false)}
+            className="text-[#455A64] hover:text-[#263238]"
+            aria-label="Expand summary"
+          >
+            <ChevronUp size={16} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Full summary panel — overlay
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#EEF2F7]">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#EEF2F7] max-h-[80vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <FileText size={20} className="text-[#034C81]" />
@@ -19,11 +85,11 @@ export function CallSummary() {
             </h2>
           </div>
           <button
-            onClick={() => setDismissed(true)}
-            className="text-[#B0BEC5] hover:text-[#455A64]"
-            aria-label="Close summary"
+            onClick={() => setMinimized(true)}
+            className="text-[#B0BEC5] hover:text-[#455A64] flex items-center gap-1 text-sm"
+            aria-label="Minimize summary"
           >
-            <X size={20} />
+            Minimize <ChevronDown size={16} />
           </button>
         </div>
 
@@ -84,10 +150,19 @@ export function CallSummary() {
             </div>
           )}
 
-          <div className="text-xs text-[#B0BEC5] pt-2 border-t border-[#EEF2F7]">
-            {summary.timestamp
-              ? new Date(summary.timestamp).toLocaleString()
-              : "Just now"}
+          <div className="flex items-center justify-between pt-3 border-t border-[#EEF2F7]">
+            <span className="text-xs text-[#B0BEC5]">
+              {summary.timestamp
+                ? new Date(summary.timestamp).toLocaleString()
+                : "Just now"}
+            </span>
+            <button
+              onClick={() => downloadSummary(summary)}
+              className="flex items-center gap-1 text-sm text-[#034C81] hover:text-[#023a63] font-medium"
+            >
+              <Download size={16} />
+              Download
+            </button>
           </div>
         </div>
       </div>
