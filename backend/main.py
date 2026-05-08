@@ -64,6 +64,8 @@ async def entrypoint(ctx: JobContext):
         logger.info("Simli not configured, running without avatar")
 
     session = AgentSession(
+        # Auto-close if user is away (no speech) for 15 seconds
+        user_away_timeout=15,
         stt=deepgram.STT(
             model="nova-2",
             language="en-US",
