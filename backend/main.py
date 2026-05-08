@@ -1,5 +1,6 @@
 import sys
 import os
+import json
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -22,21 +23,15 @@ server = AgentServer()
 
 
 def prewarm(proc: JobProcess):
-    """Pre-load models into RAM at server startup so first request is fast."""
-    # Silero VAD — ONNX model loaded once, reused for all sessions
+    """Pre-load heavy models into RAM at server startup."""
     proc.userdata["vad"] = silero.VAD.load(
-        min_speech_duration=0.05,        # 50ms min speech to trigger
-        min_silence_duration=0.4,        # 400ms silence = end of speech (faster than default 550ms)
-        prefix_padding_duration=0.3,     # capture 300ms before speech started
-        activation_threshold=0.5,        # speech probability threshold
-        force_cpu=True,                  # ONNX on CPU, fast enough for VAD
+        min_speech_duration=0.05,
+        min_silence_duration=0.4,
+        prefix_padding_duration=0.3,
+        activation_threshold=0.5,
+        force_cpu=True,
     )
     logger.info("Silero VAD model loaded into RAM")
-
-    # MultilingualModel — transformer model for semantic turn detection
-    # loaded once, determines if user is done speaking based on context
-    proc.userdata["turn_detector"] = MultilingualModel()
-    logger.info("Turn detector model loaded into RAM")
 
 
 server.setup_fnc = prewarm
@@ -51,6 +46,8 @@ async def entrypoint(ctx: JobContext):
         await db.initialize()
         logger.info("Database initialized")
 
+    # Connect to the room first — required before anything else
+    await ctx.connect()
     logger.info(f"New session: room={ctx.room.name}")
 
     # Avatar — only if Simli keys are configured
@@ -84,12 +81,11 @@ async def entrypoint(ctx: JobContext):
             voice=settings.CARTESIA_VOICE_ID or "79a125e8-cd45-4c13-8a67-188112f4dd22",
         ),
         vad=ctx.proc.userdata["vad"],
-        avatar=avatar,
         turn_handling={
-            # Semantic turn detection — uses the pre-loaded transformer model
-            # to predict if user is done speaking based on what they said,
-            # not just silence. e.g., "I want to book for..." = NOT done
-            "turn_detection": ctx.proc.userdata["turn_detector"],
+            # MultilingualModel must be created here (not in prewarm) because
+            # its __init__ calls get_job_context().inference_executor which
+            # only exists inside a job entrypoint
+            "turn_detection": MultilingualModel(),
 
             # Dynamic endpointing — adapts silence threshold based on conversation patterns
             "endpointing": {
@@ -117,10 +113,44 @@ async def entrypoint(ctx: JobContext):
         },
     )
 
+    async def publish_data(topic: str, data: dict) -> None:
+        try:
+            await ctx.room.local_participant.publish_data(
+                json.dumps(data).encode(), topic=topic
+            )
+        except Exception as e:
+            logger.error(f"Failed to publish {topic}: {e}")
+
     @session.on("user_input_transcribed")
     def on_transcript(ev):
         if ev.is_final:
             logger.info(f"User: {ev.transcript}")
+            agent._context.add_message("user", ev.transcript)
+            import asyncio
+            asyncio.ensure_future(publish_data("transcript", {"role": "user", "text": ev.transcript}))
+
+    @session.on("conversation_item_added")
+    def on_conversation_item(ev):
+        try:
+            msg = ev.item
+            logger.info(f"Conv item: role={msg.role}, type={msg.type}")
+            if msg.role == "assistant":
+                text = msg.text_content if hasattr(msg, 'text_content') else ""
+                if not text and hasattr(msg, 'content'):
+                    if isinstance(msg.content, str):
+                        text = msg.content
+                    elif isinstance(msg.content, list):
+                        text = " ".join(
+                            c.text if hasattr(c, 'text') else str(c)
+                            for c in msg.content
+                        )
+                if text:
+                    logger.info(f"Agent: {text[:200]}")
+                    agent._context.add_message("assistant", text)
+                    import asyncio
+                    asyncio.ensure_future(publish_data("transcript", {"role": "agent", "text": text}))
+        except Exception as e:
+            logger.error(f"conversation_item handler error: {e}")
 
     @session.on("agent_state_changed")
     def on_agent_state(ev):
@@ -132,6 +162,18 @@ async def entrypoint(ctx: JobContext):
             logger.info(f"Tool done: {call.name}")
 
     agent = HealthcareAgent(db=db)
+
+    # Start avatar BEFORE agent session so it can capture audio output from the start
+    if avatar:
+        await avatar.start(
+            agent_session=session,
+            room=ctx.room,
+            livekit_url=settings.LIVEKIT_URL,
+            livekit_api_key=settings.LIVEKIT_API_KEY,
+            livekit_api_secret=settings.LIVEKIT_API_SECRET,
+        )
+        logger.info("Simli avatar session started")
+
     await session.start(agent=agent, room=ctx.room)
 
 

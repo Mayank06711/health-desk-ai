@@ -34,7 +34,7 @@ class HealthcareAgent(Agent):
     async def _publish_tool_status(self, tool: str, status: str, data: dict | None = None) -> None:
         payload = json.dumps({"tool": tool, "status": status, "data": data or {}})
         try:
-            await self.session.room.local_participant.publish_data(
+            await self.session.room_io.room.local_participant.publish_data(
                 payload.encode(), topic="tool-status"
             )
         except Exception as e:
@@ -271,7 +271,7 @@ class HealthcareAgent(Agent):
                 )
 
             try:
-                await self.session.room.local_participant.publish_data(
+                await self.session.room_io.room.local_participant.publish_data(
                     json.dumps(summary).encode(), topic="call-summary"
                 )
             except Exception as e:
